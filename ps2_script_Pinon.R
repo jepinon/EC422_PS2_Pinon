@@ -164,6 +164,7 @@ ggplot(unemp_recent_summary, aes(x = fct_reorder(region, min_rate), y = min_rate
        color = "Region") +
   theme_minimal()
 
-# I though it would be interesting to look at which regions had the lowest minimum unemployment rates in the recent era.
-# We can see that the unemployment rates of California and New York never got as low as the minimums of Oregon, Texas, or the nation at-large.
+# I chose this final visualization because I thought it would be interesting to look at how low each regions unemployment rate got in the recent time frame, and how they compared to each other.
+# We can see that the unemployment rates of California and New York never got as low as the minimums of Oregon, Texas, or the nation at large.
+
 

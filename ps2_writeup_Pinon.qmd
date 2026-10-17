@@ -1,0 +1,191 @@
+---
+title: "Problem Set 2"
+author: "James Pinon"
+date: 10/16/2026
+format:
+  html:
+    toc: true
+    embed-resources: true
+---
+
+**Github repo:**
+
+<https://github.com/jepinon/EC422_PS2_Pinon>
+
+## 1. Data
+
+The data used throughout this problem set concerned unemployment rate statistics for five regions: United States, Oregon, California, Texas, and New York. Sourced from the St. Louis Federal Reserve Bank Economic Database, the data spanned from January 1976 to September 2026.
+
+```{r}
+library(tidyquant)
+library(tidyverse)
+```
+
+```{r}
+
+unemp_raw = read_rds("data/unemp_raw.rds")
+
+unemp <- unemp_raw |>
+  rename(unemployment_rate = price) |>
+  mutate(
+    region = case_when(
+      symbol == "UNRATE" ~ "United States",
+      symbol == "ORUR" ~ "Oregon",
+      symbol == "CAUR" ~ "California",
+      symbol == "TXUR" ~ "Texas",
+      symbol == "NYUR" ~ "New York"
+    )
+  )
+```
+
+## 2. Wrangling
+
+```{r}
+library(knitr)
+```
+
+### Cleaning Data
+
+```{r}
+unemp <- unemp |>
+  arrange(region, date) |>
+  group_by(region) |>
+  mutate(
+    unemployment_rate = replace(
+      unemployment_rate,
+      date == as.Date("2025-10-01"),
+      unemployment_rate[date == as.Date("2025-09-01")]
+    )
+  ) |>
+  ungroup()
+```
+
+```{r}
+unemp <- unemp |>
+  arrange(region, date) |>
+  group_by(region) |>
+  mutate(unemployment_rate_change = unemployment_rate - lag(unemployment_rate)) |>
+  ungroup()
+```
+
+```{r}
+unemp <- unemp |>
+  mutate(
+    unemployment_rate_change_no_covid = if_else(
+      year(date) == 2020,
+      NA_real_,
+      unemployment_rate_change
+    )
+  )
+
+```
+
+### Overall Unemployment Summary (1976 - Present)
+
+```{r}
+unemp_summary <- unemp |>
+  group_by(region) |>
+  summarize(
+    mean_rate = mean(unemployment_rate, na.rm = TRUE),
+    min_rate  = min(unemployment_rate,  na.rm = TRUE),
+    max_rate  = max(unemployment_rate,  na.rm = TRUE)
+  )
+
+kable(unemp_summary)
+```
+
+### 
+
+### Recent Unemployment Summary (2015 - Present)
+
+```{r}
+unemp_recent <- unemp |>
+  filter(date >= as.Date("2015-01-01"))
+
+unemp_recent_summary <- unemp_recent |>
+  group_by(region) |>
+  summarize(
+    mean_rate = mean(unemployment_rate, na.rm = TRUE),
+    min_rate  = min(unemployment_rate,  na.rm = TRUE),
+    max_rate  = max(unemployment_rate,  na.rm = TRUE)
+  )
+
+kable(unemp_recent_summary)
+```
+
+### Greatest Unemployment Rate Increases (Excluding 2020)
+
+```{r}
+unemp_top_increases_no_covid <- unemp |>
+  slice_max(unemployment_rate_change_no_covid, n = 5, with_ties = TRUE)
+
+kable(unemp_top_increases_no_covid)
+```
+
+### Greatest Unemployment Rate Decreases (Excluding 2020)
+
+```{r}
+unemp_top_decreases_no_covid <- unemp |>
+  slice_min(unemployment_rate_change_no_covid, n = 5, with_ties = TRUE)
+
+kable(unemp_top_decreases_no_covid)
+```
+
+## 3. Visualization
+
+### Line Plot: Regional Unemployment Rate Over Time
+
+```{r}
+ggplot(unemp, aes(x = date, y = unemployment_rate, color = region)) +
+  geom_line() +       
+  labs(title = "Regional Unemployment Rate Over Time", 
+       x = "Date", 
+       y = "Unemployment Rate",
+       color = "Region") +
+  theme_minimal()
+
+```
+
+### Line Plot: Unemployment Rate Over Time Across Individual Regions
+
+```{r}
+ggplot(unemp, aes(x = date, y = unemployment_rate, color = region)) +
+  geom_line() +       
+  facet_wrap(~ region) +
+  labs(title = "Unemployment Rate Over Time Across Individual Regions", 
+       x = "Date", 
+       y = "Unemployment Rate",
+       color = "Region") +
+  theme_minimal()
+
+```
+
+### Bar Chart: Regional Mean Unemployment Rate Since 1976
+
+```{r}
+ggplot(unemp_summary, aes(x = fct_reorder(region, mean_rate), y = mean_rate, color = region)) +
+  geom_col() +     
+  labs(title = "Regional Mean Unemployment Rate Since 1976", 
+       x = "Region", 
+       y = "Mean Unemployment Rate Since 1976",
+       color = "Region") +
+  theme_minimal()
+```
+
+### Bar Chart: Regional Recent Minimums
+
+```{r}
+ggplot(unemp_recent_summary, aes(x = fct_reorder(region, min_rate), y = min_rate, color = region)) +
+  geom_col() +     
+  labs(title = "Regional Minimum Unemployment Rate Since 2015", 
+       x = "Region", 
+       y = "Minimum Unemployment Rate Since 2015",
+       color = "Region") +
+  theme_minimal()
+```
+
+I chose this final visualization because I thought it would be interesting to look at how low each regions unemployment rate got in the recent time frame, and how they compared to each other. We can see that the unemployment rates of California and New York never got as low as the minimums of Oregon, Texas, or the nation at large.
+
+## 4. Reflection
+
+I entered this assignment with a working familiarity of R and how to use various elements of it, but I definitely feel that I was challenged in a lot of ways. Developing and customizing plots is something I've been fairly familiar with from past coursework, so that code came pretty naturally to me. On the other hand, I was unaccustomed to a lot of the data wrangling methods utilized here, such as mutate(), filter(), slice_max(), and slice_min(), so I felt satisfied to learn them and get more comfortable. I had never worked with Quarto or Git before, so Git and Github especially were difficult to get comfortable with, particularly keeping track of all my commits and file saves. I can tell that I'm already improving though, and I will make a distinct effort going forward to be aware of how my files are organized in Github.
